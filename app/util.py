@@ -208,7 +208,7 @@ def update_master_from_slave(url_base):
                             data=json.dumps(data),
                             headers=headers)
         if req.status_code != 200:
-            print("Callback failed:", req.status_code, req.text)
+            print("Update master failed:", req.status_code, req.text)
             return False
     return True
 
@@ -330,7 +330,10 @@ def process_bunq_accounts_callback(accounts):
                 acc["enableRequest"] = acc2["enableRequest"]
                 acc["callbackMutation"] = acc2["callbackMutation"]
                 acc["callbackRequest"] = acc2["callbackRequest"]
-                acc["callbackOther"] = acc2["callbackOther"]
+                if "callbackOther" in acc2:
+                    acc["callbackOther"] = acc2["callbackOther"]
+                else:
+                    acc["callbackOther"] = []
                 storage.store("account_callback", acc["iban"], {"value": acc})
         if not found:
             # new account
