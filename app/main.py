@@ -339,18 +339,6 @@ def ifttt_test_setup():
                         "balance_comparator_2": "below",
                         "balance_value_2": "99999",
                     },
-                    "bunq_mutation_balance_below": {
-                        "account": test_account,
-                        "balance_comparator": "below",
-                        "balance_value": "0",
-                    },
-                    "bunq_mutation_balance_above": {
-                        "account": test_account,
-                        "balance_comparator": "above",
-                        "balance_value": "0",
-                        "balance_comparator_2": "below",
-                        "balance_value_2": "99999",
-                    },
                     "bunq_balance": {
                         "account": test_account,
                         "balance_comparator": "above",
@@ -470,32 +458,6 @@ def ifttt_comparator_numeric_options():
     ]}
     return json.dumps(data)
 
-@app.route("/ifttt/v1/triggers/bunq_mutation_balance_above/fields/"\
-           "balance_comparator/options", methods=["POST"])
-def ifttt_comparator_above_option():
-    """ Option values for numeric comparators """
-    errmsg = check_ifttt_service_key()
-    if errmsg:
-        return errmsg, 401
-
-    data = {"data": [
-        {"value": "above", "label": "above"},
-    ]}
-    return json.dumps(data)
-
-@app.route("/ifttt/v1/triggers/bunq_mutation_balance_below/fields/"\
-           "balance_comparator/options", methods=["POST"])
-def ifttt_comparator_below_option():
-    """ Option values for numeric comparators """
-    errmsg = check_ifttt_service_key()
-    if errmsg:
-        return errmsg, 401
-
-    data = {"data": [
-        {"value": "below", "label": "below"},
-    ]}
-    return json.dumps(data)
-
 @app.route("/ifttt/v1/triggers/bunq_mutation/fields/"\
            "counterparty_name_comparator/options", methods=["POST"])
 @app.route("/ifttt/v1/triggers/bunq_mutation/fields/"\
@@ -595,10 +557,6 @@ def ifttt_type_options(first):
            "account/options", methods=["POST"])
 @app.route("/ifttt/v1/triggers/bunq_mutation_balance/fields/"\
            "account/options", methods=["POST"])
-@app.route("/ifttt/v1/triggers/bunq_mutation_balance_below/fields/"\
-           "account/options", methods=["POST"])
-@app.route("/ifttt/v1/triggers/bunq_mutation_balance_above/fields/"\
-           "account/options", methods=["POST"])
 @app.route("/ifttt/v1/triggers/bunq_balance/fields/"\
            "account/options", methods=["POST"])
 def ifttt_account_options_mutation():
@@ -691,8 +649,6 @@ def bunq2ifttt_request():
 
 @app.route("/ifttt/v1/triggers/bunq_mutation", methods=["POST"])
 @app.route("/ifttt/v1/triggers/bunq_mutation_balance", methods=["POST"])
-@app.route("/ifttt/v1/triggers/bunq_mutation_balance_below", methods=["POST"])
-@app.route("/ifttt/v1/triggers/bunq_mutation_balance_above", methods=["POST"])
 def trigger_mutation():
     """ Retrieve bunq_mutation trigger items """
     errmsg = check_ifttt_service_key()
@@ -703,10 +659,6 @@ def trigger_mutation():
 @app.route("/ifttt/v1/triggers/bunq_mutation/trigger_identity/<triggerid>",
            methods=["DELETE"])
 @app.route("/ifttt/v1/triggers/bunq_mutation_balance/trigger_identity/<triggerid>",
-           methods=["DELETE"])
-@app.route("/ifttt/v1/triggers/bunq_mutation_balance_below/trigger_identity/<triggerid>",
-           methods=["DELETE"])
-@app.route("/ifttt/v1/triggers/bunq_mutation_balance_above/trigger_identity/<triggerid>",
            methods=["DELETE"])
 def trigger_mutation_delete(triggerid):
     """ Delete a trigger_identity for the bunq_mutation trigger """
