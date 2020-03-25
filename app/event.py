@@ -8,6 +8,7 @@ Handles all events:
 # pylint: disable=broad-except
 
 import json
+import time
 import traceback
 import uuid
 
@@ -41,11 +42,17 @@ def bunq_callback_request():
             return 200
 
         iban = obj["alias"]["iban"]
+        valid, accname = util.check_valid_bunq_account(iban, "Request")
+        if not valid:
+            print("[bunqcb_request] trigger not enabled for this account")
+            return 200
+
         item = {
             "created_at": obj["created"],
             "date": arrow.get(obj["created"]).format("YYYY-MM-DD"),
             "amount": obj["amount_inquired"]["value"],
             "account": iban,
+            "account_name": accname,
             "counterparty_account": counterparty_account(obj),
             "counterparty_name": obj["counterparty_alias"]["display_name"],
             "description": obj["description"],
@@ -103,6 +110,11 @@ def bunq_callback_mutation():
             return 200
 
         iban = payment["alias"]["iban"]
+        valid, accname = util.check_valid_bunq_account(iban, "Mutation")
+        if not valid:
+            print("[bunqcb_mutation] trigger not enabled for this account")
+            return 200
+
         item = {
             "created_at": payment["created"],
             "date": arrow.get(payment["created"]).format("YYYY-MM-DD"),
@@ -110,6 +122,7 @@ def bunq_callback_mutation():
             "amount": payment["amount"]["value"],
             "balance": payment["balance_after_mutation"]["value"],
             "account": iban,
+            "account_name": accname,
             "counterparty_account": counterparty_account(payment),
             "counterparty_name": payment["counterparty_alias"]["display_name"],
             "description": payment["description"],
@@ -147,9 +160,8 @@ def bunq_callback_mutation():
         print("Matched mutation triggers:", json.dumps(triggerids_1))
         print("Matched balance triggers:", json.dumps(triggerids_2))
         data = {"data": []}
-        for triggerids in [triggerids_1, triggerids_2]:
-            for triggerid in triggerids:
-                data["data"].append({"trigger_identity": triggerid})
+        for triggerid in triggerids_1 + triggerids_2:
+            data["data"].append({"trigger_identity": triggerid})
         if data["data"]:
             headers = {
                 "IFTTT-Channel-Key": util.get_ifttt_service_key(),
@@ -235,13 +247,13 @@ def check_types(item, fields):
     """ Check the mutation type fields for a trigger """
     result = True
     if "type" in fields and fields["type"] != "ANY":
-        result &= item["type"].startswith(fields["type"])
+        result = item["type"].startswith(fields["type"])
     if "type_2" in fields and fields["type_2"] != "---":
-        result &= item["type"].startswith(fields["type_2"])
+        result |= item["type"].startswith(fields["type_2"])
     if "type_3" in fields and fields["type_3"] != "---":
-        result &= item["type"].startswith(fields["type_3"])
+        result |= item["type"].startswith(fields["type_3"])
     if "type_4" in fields and fields["type_4"] != "---":
-        result &= item["type"].startswith(fields["type_4"])
+        result |= item["type"].startswith(fields["type_4"])
     return result
 
 def check_comparators(item, fields):
@@ -417,6 +429,7 @@ def trigger_mutation_test(limit):
         "amount": "1.01",
         "balance": "15.15",
         "account": "NL42BUNQ0123456789",
+        "account_name": "Test account",
         "counterparty_account": "NL11BANK1111111111",
         "counterparty_name": "John Doe",
         "description": "Here you are",
@@ -432,6 +445,7 @@ def trigger_mutation_test(limit):
         "amount": "2.02",
         "balance": "14.14",
         "account": "NL42BUNQ0123456789",
+        "account_name": "Test account",
         "counterparty_account": "NL22BANK2222222222",
         "counterparty_name": "Jane Doe",
         "description": "What I owe you",
@@ -447,6 +461,7 @@ def trigger_mutation_test(limit):
         "amount": "-3.03",
         "balance": "12.12",
         "account": "NL42BUNQ0123456789",
+        "account_name": "Test account",
         "counterparty_account": "",
         "counterparty_name": "ACME Store Inc.",
         "description": "POS transaction 1234567890",
@@ -553,6 +568,7 @@ def trigger_balance_test(limit):
     result = [{
         "created_at": "2018-01-05T11:25:15+00:00",
         "account": "NL42BUNQ0123456789",
+        "account_name": "Test account",
         "balance": "15.15",
         "meta": {
             "id": "1",
@@ -561,6 +577,7 @@ def trigger_balance_test(limit):
     }, {
         "created_at": "2014-10-24T09:03:34+00:00",
         "account": "NL42BUNQ0123456789",
+        "account_name": "Test account",
         "balance": "14.14",
         "meta": {
             "id": "2",
@@ -569,6 +586,7 @@ def trigger_balance_test(limit):
     }, {
         "created_at": "2008-05-30T04:20:12+00:00",
         "account": "NL42BUNQ0123456789",
+        "account_name": "Test account",
         "balance": "12.12",
         "meta": {
             "id": "3",
@@ -670,6 +688,7 @@ def trigger_request_test(limit):
         "created_at": "2018-01-05T11:25:15+00:00",
         "amount": "1.01",
         "account": "NL42BUNQ0123456789",
+        "account_name": "Test account",
         "counterparty_account": "NL11BANK1111111111",
         "counterparty_name": "John Doe",
         "description": "Here you are",
@@ -682,6 +701,7 @@ def trigger_request_test(limit):
         "created_at": "2014-10-24T09:03:34+00:00",
         "amount": "2.02",
         "account": "NL42BUNQ0123456789",
+        "account_name": "Test account",
         "counterparty_account": "NL22BANK2222222222",
         "counterparty_name": "Jane Doe",
         "description": "What I owe you",
@@ -694,6 +714,7 @@ def trigger_request_test(limit):
         "created_at": "2008-05-30T04:20:12+00:00",
         "amount": "-3.03",
         "account": "NL42BUNQ0123456789",
+        "account_name": "Test account",
         "counterparty_account": "",
         "counterparty_name": "ACME Store Inc.",
         "description": "POS transaction 1234567890",
@@ -719,3 +740,93 @@ def trigger_request_delete(identity):
         print("[trigger_request_delete] ERROR: cannot delete trigger")
         return json.dumps({"errors": [{"message": "Cannot delete trigger"}]}),\
                400
+
+
+###############################################################################
+# IFTTT trigger bunq_oauth_expires
+###############################################################################
+
+def trigger_oauth_expires():
+    """ Callback for IFTTT trigger bunq_oauth_expires """
+    try:
+        data = request.get_json()
+        print("[trigger_oauthexp] input: {}".format(json.dumps(data)))
+
+        if "triggerFields" not in data or \
+                "hours" not in data["triggerFields"]:
+            print("[trigger_oauthexp] ERROR: hours field missing!")
+            return json.dumps({"errors": [{"message": "Invalid data"}]}), 400
+        hours = data["triggerFields"]["hours"]
+
+        if "trigger_identity" not in data:
+            print("[trigger_oauthexp] ERROR: trigger_identity field missing!")
+            return json.dumps({"errors": [{"message": "Invalid data"}]}), 400
+
+        limit = 50
+        if "limit" in data:
+            limit = data["limit"]
+
+        if hours == "9876543210":
+            return trigger_oauth_expires_test(limit)
+
+        timezone = "UTC"
+        if "user" in data and "timezone" in data["user"]:
+            timezone = data["user"]["timezone"]
+
+        transactions = []
+        value = storage.get_value("bunq2IFTTT", "bunq_oauth")
+        if value is not None:
+            timestamp = value["timestamp"] + 3600 * (90*24 - int(hours))
+            if timestamp <= time.time():
+                transactions = [{
+                    "created_at": arrow.get(timestamp)\
+                                  .to(timezone).isoformat(),
+                    "expires_at": arrow.get(value["timestamp"] + 90*24*3600)\
+                                  .to(timezone).isoformat(),
+                    "meta": {
+                        "id": str(timestamp),
+                        "timestamp": str(timestamp),
+                    }
+                }]
+
+        print("[trigger_oauthexp] Found {} transactions"
+              .format(len(transactions)))
+        return json.dumps({"data": transactions[:limit]})
+    except Exception:
+        traceback.print_exc()
+        print("[trigger_oauthexp] ERROR: cannot retrieve oauth expiry data")
+        return json.dumps({"errors": [{"message": \
+                           "Cannot retrieve oauth expiry data"}]}), 400
+
+
+def trigger_oauth_expires_test(limit):
+    """ Test data for IFTTT trigger bunq_oauth_expires """
+    result = [{
+        "created_at": "2018-01-05T11:25:15+00:00",
+        "expires_at": "2018-01-05T11:25:15+00:00",
+        "meta": {
+            "id": "1",
+            "timestamp": "1515151515"
+        }
+    }, {
+        "created_at": "2014-10-24T09:03:34+00:00",
+        "expires_at": "2014-10-24T09:03:34+00:00",
+        "meta": {
+            "id": "2",
+            "timestamp": "1414141414"
+        }
+    }, {
+        "created_at": "2008-05-30T04:20:12+00:00",
+        "expires_at": "2008-05-30T04:20:12+00:00",
+        "meta": {
+            "id": "3",
+            "timestamp": "1212121212"
+        }
+    }]
+    return json.dumps({"data": result[:limit]})
+
+
+def trigger_oauth_expires_delete(identity):
+    """ Delete a specific trigger identity for trigger bunq_oauth_expires """
+    # We don't store trigger identities, so this call can be ignored
+    return ""
